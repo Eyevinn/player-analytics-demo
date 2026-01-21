@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eyevinn Open Analytics Demo</title>
+  <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Eyevinn Open Analytics Demo</h1>
+      <p class="subtitle">Demonstrating the <a href="https://epas.docs.eyevinn.technology/" target="_blank">EPAS Specification</a> | Running on <a href="https://www.osaas.io" target="_blank">Open Source Cloud</a> | <a href="/about.html">About</a></p>
+    </header>
+
+    <div class="main-content">
+      <div class="player-section">
+        <div class="controls-panel">
+          <div class="control-group">
+            <label for="player-select">Video Player</label>
+            <select id="player-select">
+              <option value="eyevinn">Eyevinn Web Player</option>
+              <option value="hlsjs">HLS.js</option>
+              <option value="shaka">Shaka Player</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="eventsink-url">Eventsink URL</label>
+            <input
+              type="text"
+              id="eventsink-url"
+              placeholder="Enter eventsink URL"
+            >
+          </div>
+
+          <div class="control-group">
+            <label for="video-url">Video URL (HLS)</label>
+            <input
+              type="text"
+              id="video-url"
+              value="https://lab.cdn.eyevinn.technology/osc/osc-reel/a4e1156e-f872-455f-9f1f-be73b5effba8/index.m3u8"
+              placeholder="Enter HLS stream URL"
+            >
+          </div>
+
+          <div class="control-group">
+            <label for="content-title">Content Title</label>
+            <input
+              type="text"
+              id="content-title"
+              value="Demo Video"
+              placeholder="Enter content title"
+            >
+          </div>
+
+          <button id="load-btn" class="btn btn-primary">Load Video</button>
+          <button id="stop-btn" class="btn btn-secondary" disabled>Stop Session</button>
+        </div>
+
+        <div class="video-container" id="video-container">
+          <video id="video-player" controls playsinline></video>
+        </div>
+
+        <div class="session-info">
+          <div class="info-item">
+            <span class="label">Session ID:</span>
+            <span id="session-id" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Shard ID:</span>
+            <span class="value">epasdemo</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Player:</span>
+            <span id="current-player" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Status:</span>
+            <span id="status" class="value status-idle">Idle</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="events-section">
+        <div class="events-header">
+          <h2>Analytics Events</h2>
+          <button id="clear-events" class="btn btn-small">Clear</button>
+        </div>
+        <div id="events-log" class="events-log">
+          <div class="event-placeholder">Events will appear here when video starts playing...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="database-section">
+      <div class="database-header">
+        <h2>ClickHouse Database</h2>
+        <div class="database-controls">
+          <button id="refresh-db" class="btn btn-primary">Refresh Data</button>
+        </div>
+      </div>
+      <div class="database-info">
+        <span class="db-label">Table:</span>
+        <code id="db-table-name">epas_epasdemo</code>
+        <span class="db-label">Rows:</span>
+        <span id="db-row-count">-</span>
+      </div>
+      <div class="table-container">
+        <table id="events-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Session ID</th>
+              <th>Event</th>
+              <th>Playhead</th>
+              <th>Duration</th>
+              <th>Payload</th>
+            </tr>
+          </thead>
+          <tbody id="events-table-body">
+            <tr class="placeholder-row">
+              <td colspan="6">Click "Refresh Data" to load events from ClickHouse</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        Built with
+        <a href="https://github.com/Eyevinn/player-analytics-client-sdk-web" target="_blank">@eyevinn/player-analytics-client-sdk-web</a>
+        |
+        <a href="https://github.com/Eyevinn/player-analytics-specification" target="_blank">EPAS Specification</a>
+      </p>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

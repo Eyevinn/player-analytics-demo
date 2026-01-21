@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - Eyevinn Open Analytics Demo</title>
+  <link rel="stylesheet" href="/src/styles.css">
+  <link rel="stylesheet" href="/src/about.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>About Eyevinn Open Analytics</h1>
+      <p class="subtitle"><a href="/">Back to Demo</a></p>
+    </header>
+
+    <main class="about-content">
+      <section class="about-section">
+        <h2>What is EPAS?</h2>
+        <p>
+          The <strong>Eyevinn Player Analytics Specification (EPAS)</strong> is an open-source, vendor-neutral
+          specification for implementing standardized video player analytics. It enables modular integration
+          across different player platforms without vendor lock-in.
+        </p>
+        <p>
+          EPAS defines a common set of events and data structures that video players should emit during
+          playback, making it possible to collect consistent analytics data regardless of which player
+          technology you use.
+        </p>
+        <a href="https://epas.docs.eyevinn.technology/" target="_blank" class="btn btn-primary">Read the EPAS Documentation</a>
+      </section>
+
+      <section class="about-section">
+        <h2>Event Types</h2>
+        <p>EPAS defines the following core events:</p>
+        <div class="event-grid">
+          <div class="event-card">
+            <span class="event-badge init">init</span>
+            <p>Session initialization</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge loading">loading</span>
+            <p>Content URL attached</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge loaded">loaded</span>
+            <p>Ready to play</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge playing">playing</span>
+            <p>Playback started/resumed</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge paused">paused</span>
+            <p>Playback paused</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge buffering">buffering</span>
+            <p>Player is buffering</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge buffered">buffered</span>
+            <p>Buffering complete</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge seeking">seeking</span>
+            <p>Seek initiated</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge seeked">seeked</span>
+            <p>Seek complete</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge bitrate_changed">bitrate_changed</span>
+            <p>Quality level changed</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge heartbeat">heartbeat</span>
+            <p>Periodic keepalive</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge stopped">stopped</span>
+            <p>Session ended</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge metadata">metadata</span>
+            <p>Content information</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge error">error</span>
+            <p>Fatal error occurred</p>
+          </div>
+          <div class="event-card">
+            <span class="event-badge warning">warning</span>
+            <p>Non-fatal warning</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h2>Architecture in Open Source Cloud</h2>
+        <p>
+          This demo runs on <a href="https://www.osaas.io" target="_blank">Open Source Cloud (OSC)</a>,
+          a platform for running open-source software as managed services. The analytics pipeline consists of:
+        </p>
+        <div class="architecture-diagram">
+          <div class="arch-component">
+            <div class="arch-icon">🎬</div>
+            <h3>Video Player</h3>
+            <p>Eyevinn Web Player, HLS.js, or Shaka Player with EPAS SDK</p>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-component">
+            <div class="arch-icon">📡</div>
+            <h3>Eventsink</h3>
+            <p>Receives and validates analytics events</p>
+            <code>eyevinn-player-analytics-eventsink</code>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-component">
+            <div class="arch-icon">📬</div>
+            <h3>SmoothMQ</h3>
+            <p>Message queue for reliable event delivery</p>
+            <code>smoothmq</code>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-component">
+            <div class="arch-icon">⚙️</div>
+            <h3>Worker</h3>
+            <p>Processes events from the queue</p>
+            <code>eyevinn-player-analytics-worker</code>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-component">
+            <div class="arch-icon">🗄️</div>
+            <h3>ClickHouse</h3>
+            <p>Stores analytics data for querying</p>
+            <code>clickhouse</code>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h2>Open Source Components</h2>
+        <div class="components-list">
+          <div class="component-item">
+            <h3>Player Analytics Client SDK</h3>
+            <p>JavaScript SDK for integrating EPAS with web video players</p>
+            <a href="https://github.com/Eyevinn/player-analytics-client-sdk-web" target="_blank">View on GitHub</a>
+          </div>
+          <div class="component-item">
+            <h3>Player Analytics Eventsink</h3>
+            <p>Backend service that receives and validates analytics events</p>
+            <a href="https://github.com/Eyevinn/player-analytics-eventsink" target="_blank">View on GitHub</a>
+          </div>
+          <div class="component-item">
+            <h3>Player Analytics Worker</h3>
+            <p>Worker service that processes events and stores them in the database</p>
+            <a href="https://github.com/Eyevinn/player-analytics-worker" target="_blank">View on GitHub</a>
+          </div>
+          <div class="component-item">
+            <h3>EPAS Specification</h3>
+            <p>The core specification with TypeScript definitions and JSON schema</p>
+            <a href="https://github.com/Eyevinn/player-analytics-specification" target="_blank">View on GitHub</a>
+          </div>
+          <div class="component-item">
+            <h3>Eyevinn Web Player</h3>
+            <p>Open source web video player supporting HLS and MPEG-DASH</p>
+            <a href="https://github.com/Eyevinn/web-player" target="_blank">View on GitHub</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h2>Getting Started</h2>
+        <p>To set up your own analytics pipeline:</p>
+        <ol class="getting-started-list">
+          <li>
+            <strong>Sign up for Open Source Cloud</strong>
+            <p>Create an account at <a href="https://www.osaas.io" target="_blank">osaas.io</a></p>
+          </li>
+          <li>
+            <strong>Deploy the services</strong>
+            <p>Launch the Eventsink, SmoothMQ, Worker, and ClickHouse services from the OSC catalog</p>
+          </li>
+          <li>
+            <strong>Integrate the SDK</strong>
+            <p>Install <code>@eyevinn/player-analytics-client-sdk-web</code> in your application</p>
+          </li>
+          <li>
+            <strong>Start collecting data</strong>
+            <p>Configure the SDK with your Eventsink URL and start tracking player events</p>
+          </li>
+        </ol>
+        <div class="terraform-section">
+          <h3>Automate with Terraform</h3>
+          <p>
+            You can deploy the entire analytics pipeline automatically using our Terraform example script.
+            This sets up all the required services in Open Source Cloud with a single command.
+          </p>
+          <a href="https://github.com/EyevinnOSC/terraform-examples/tree/main/examples/open-analytics" target="_blank" class="btn btn-primary">View Terraform Script</a>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h2>About Eyevinn Technology</h2>
+        <p>
+          <a href="https://www.eyevinn.se" target="_blank">Eyevinn Technology</a> is a Stockholm-based media technology
+          consulting firm specializing in streaming solutions and AI technologies for the TV, media, and entertainment sectors.
+          We develop cutting-edge platforms using open-source technology to help companies optimize costs and improve profitability.
+        </p>
+        <p>
+          We champion open-source innovation as fundamental to our business model. Rather than creating vendor lock-in,
+          we develop solutions on open foundations. Through our Strategic Open Source Partnerships, clients invest in
+          innovations together that become freely available to the community.
+        </p>
+        <p>
+          Our core focus areas include web-native playout, online-first streaming solutions, AI-assisted automation
+          for media workflows, and dynamic advertising technology. We work with major broadcasters including SVT, YLE, NRK, and TV2.
+        </p>
+        <p>
+          We also host <a href="https://streamingtech.se" target="_blank">Streaming Tech Sweden</a>, an annual industry conference.
+        </p>
+        <div class="contact-links">
+          <a href="mailto:work@eyevinn.se" class="btn btn-secondary">Work with us</a>
+          <a href="https://github.com/Eyevinn" target="_blank" class="btn btn-secondary">GitHub</a>
+          <a href="http://slack.streamingtech.se" target="_blank" class="btn btn-secondary">Community Slack</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Built with
+        <a href="https://github.com/Eyevinn/player-analytics-client-sdk-web" target="_blank">@eyevinn/player-analytics-client-sdk-web</a>
+        |
+        <a href="https://github.com/Eyevinn/player-analytics-specification" target="_blank">EPAS Specification</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

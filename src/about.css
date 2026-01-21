@@ -1,0 +1,246 @@
+.about-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.about-section {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.about-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.about-section p {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}
+
+.about-section a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.about-section a:hover {
+  text-decoration: underline;
+}
+
+.about-section .btn {
+  display: inline-block;
+  margin-top: 1rem;
+  text-decoration: none;
+}
+
+.about-section .btn:hover {
+  text-decoration: none;
+}
+
+.about-section .btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.about-section .btn-primary:hover {
+  background: var(--primary-hover);
+  color: white;
+}
+
+/* Event Grid */
+.event-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.event-card {
+  background: var(--surface-light);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.event-card p {
+  font-size: 0.8125rem;
+  margin: 0.5rem 0 0 0;
+  color: var(--text-muted);
+}
+
+/* Architecture Diagram */
+.architecture-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--surface-light);
+  border-radius: 12px;
+}
+
+.arch-component {
+  background: var(--background);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.arch-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.arch-component h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.arch-component p {
+  font-size: 0.8125rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+}
+
+.arch-component code {
+  font-size: 0.6875rem;
+  background: var(--surface-light);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: var(--primary-color);
+}
+
+.arch-arrow {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+@media (max-width: 900px) {
+  .architecture-diagram {
+    flex-direction: column;
+  }
+
+  .arch-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+/* Components List */
+.components-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.component-item {
+  background: var(--surface-light);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.component-item h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.component-item p {
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.component-item a {
+  font-size: 0.875rem;
+  color: var(--primary-color);
+}
+
+/* Getting Started List */
+.getting-started-list {
+  list-style: none;
+  counter-reset: step;
+  margin-top: 1.5rem;
+}
+
+.getting-started-list li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.getting-started-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2rem;
+  height: 2rem;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.875rem;
+}
+
+.getting-started-list li strong {
+  display: block;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.getting-started-list li p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.getting-started-list code {
+  background: var(--surface-light);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: var(--primary-color);
+}
+
+/* Terraform Section */
+.terraform-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--surface-light);
+  border-radius: 8px;
+  border-left: 4px solid var(--primary-color);
+}
+
+.terraform-section h3 {
+  font-size: 1.125rem;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.terraform-section p {
+  margin-bottom: 1rem;
+}
+
+/* Contact Links */
+.contact-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.contact-links .btn {
+  text-decoration: none;
+}
