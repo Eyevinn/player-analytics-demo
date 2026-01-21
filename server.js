@@ -15,6 +15,8 @@ app.use(express.static(join(__dirname, 'dist')));
 app.get('*', (req, res) => {
   const filePath = join(__dirname, 'dist', req.path);
 
+  console.log(filePath);
+
   // If the file exists, it would have been served by express.static
   // Otherwise, serve index.html for SPA-like behavior
   res.sendFile(join(__dirname, 'dist', 'index.html'));
