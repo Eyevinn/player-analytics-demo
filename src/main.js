@@ -14,6 +14,7 @@ const CLICKHOUSE_PASSWORD = import.meta.env.VITE_CLICKHOUSE_PASSWORD || 'epasdev
 
 // DOM Elements
 const playerSelect = document.getElementById('player-select');
+const analyticsProtocolSelect = document.getElementById('analytics-protocol');
 const eventsinkUrlInput = document.getElementById('eventsink-url');
 const videoUrlInput = document.getElementById('video-url');
 const contentTitleInput = document.getElementById('content-title');
@@ -23,6 +24,7 @@ const videoContainer = document.getElementById('video-container');
 let videoElement = document.getElementById('video-player');
 const sessionIdDisplay = document.getElementById('session-id');
 const currentPlayerDisplay = document.getElementById('current-player');
+const currentProtocolDisplay = document.getElementById('current-protocol');
 const statusDisplay = document.getElementById('status');
 const eventsLog = document.getElementById('events-log');
 const clearEventsBtn = document.getElementById('clear-events');
@@ -35,12 +37,237 @@ const eventsTableBody = document.getElementById('events-table-body');
 
 // State
 let currentPlayer = null;
+let currentProtocol = null;
 let hlsInstance = null;
 let shakaInstance = null;
 let eyevinnInstance = null;
 let eyevinnDestroy = null;
 let analyticsConnector = null;
+let cmcdReporter = null;
 let sessionId = null;
+
+// CMCDv2 Reporter class
+// Implements CMCDv2 spec for posting to eventsink /cmcd endpoint
+// Event types: ps (playback start), st (stall), er (error), se (seek),
+//              sp (speed change), as/ae (ad start/end), is/ie (interstitial start/end), cc (content change)
+class CMCDv2Reporter {
+  constructor(eventsinkUrl) {
+    // Ensure the eventsink URL ends with /cmcd
+    this.eventsinkUrl = eventsinkUrl.endsWith('/cmcd')
+      ? eventsinkUrl
+      : `${eventsinkUrl.replace(/\/$/, '')}/cmcd`;
+    this.sessionId = null;
+    this.contentId = null;
+    this.contentUrl = null;
+    this.videoElement = null;
+    this.metadata = {};
+    this.currentBitrate = null;
+    this.topBitrate = null;
+    this.streamingFormat = 'h'; // HLS by default
+    this.streamType = 'v'; // VOD by default
+    this.startTime = null;
+    this.isPlaying = false;
+    this.hasStarted = false;
+  }
+
+  async init(options) {
+    this.sessionId = options.sessionId;
+    this.startTime = Date.now();
+    // Send playback start event (ps)
+    await this.sendCMCDEvent('ps');
+    this.hasStarted = true;
+  }
+
+  load(videoElement) {
+    this.videoElement = videoElement;
+    this.attachVideoListeners();
+  }
+
+  attachVideoListeners() {
+    if (!this.videoElement) return;
+
+    this.videoElement.addEventListener('play', () => this.onPlay());
+    this.videoElement.addEventListener('pause', () => this.onPause());
+    this.videoElement.addEventListener('waiting', () => this.onBuffering());
+    this.videoElement.addEventListener('playing', () => this.onPlaying());
+    this.videoElement.addEventListener('seeking', () => this.onSeeking());
+    this.videoElement.addEventListener('seeked', () => this.onSeeked());
+    this.videoElement.addEventListener('ended', () => this.onEnded());
+  }
+
+  getSessionData() {
+    return {
+      sid: this.sessionId,
+      cid: this.contentId || undefined,
+      sf: this.streamingFormat,
+      st: this.streamType,
+      pr: this.videoElement?.playbackRate || 1,
+      v: 2
+    };
+  }
+
+  getObjectData() {
+    const duration = this.videoElement ? Math.round(this.videoElement.duration * 1000) || undefined : undefined;
+    return {
+      br: this.currentBitrate || undefined,
+      d: duration,
+      tb: this.topBitrate || undefined
+    };
+  }
+
+  getRequestData() {
+    return {
+      bl: this.getBufferLength() || undefined,
+      su: !this.hasStarted ? true : undefined
+    };
+  }
+
+  getBufferLength() {
+    if (!this.videoElement) return 0;
+    const buffered = this.videoElement.buffered;
+    if (buffered.length === 0) return 0;
+    const currentTime = this.videoElement.currentTime;
+    for (let i = 0; i < buffered.length; i++) {
+      if (currentTime >= buffered.start(i) && currentTime <= buffered.end(i)) {
+        return Math.round((buffered.end(i) - currentTime) * 1000);
+      }
+    }
+    return 0;
+  }
+
+  // Build CMCDv2 compliant payload
+  buildPayload(eventType, statusData = {}) {
+    const session = this.getSessionData();
+    const object = this.getObjectData();
+    const request = this.getRequestData();
+
+    // Clean undefined values from objects
+    const cleanObject = (obj) => {
+      const cleaned = {};
+      Object.keys(obj).forEach(key => {
+        if (obj[key] !== undefined) {
+          cleaned[key] = obj[key];
+        }
+      });
+      return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+    };
+
+    const event = {
+      session: cleanObject(session),
+      object: cleanObject(object),
+      request: cleanObject(request),
+      status: cleanObject(statusData),
+      event: eventType ? { e: eventType, ts: Date.now() } : undefined
+    };
+
+    // Clean the event object
+    Object.keys(event).forEach(key => {
+      if (event[key] === undefined) {
+        delete event[key];
+      }
+    });
+
+    return {
+      session: { sid: this.sessionId },
+      events: [event]
+    };
+  }
+
+  async sendCMCDEvent(eventType, statusData = {}) {
+    const payload = this.buildPayload(eventType, statusData);
+
+    try {
+      const response = await fetch(this.eventsinkUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        console.warn('CMCDv2 event send failed:', response.status, text);
+      }
+    } catch (error) {
+      console.error('CMCDv2 event send error:', error);
+    }
+  }
+
+  // Event handlers
+  onPlay() {
+    this.isPlaying = true;
+  }
+
+  onPause() {
+    this.isPlaying = false;
+  }
+
+  onBuffering() {
+    // st = stall/rebuffering event
+    this.sendCMCDEvent('st', { bs: true });
+  }
+
+  onPlaying() {
+    this.isPlaying = true;
+  }
+
+  onSeeking() {
+    // se = seek event
+    this.sendCMCDEvent('se');
+  }
+
+  onSeeked() {
+    // Seek completed - no specific CMCD event for this
+  }
+
+  onEnded() {
+    this.isPlaying = false;
+  }
+
+  reportBitrateChange(payload) {
+    this.currentBitrate = payload.bitrate;
+    if (!this.topBitrate || payload.bitrate > this.topBitrate) {
+      this.topBitrate = payload.bitrate;
+    }
+  }
+
+  reportMetadata(payload) {
+    this.metadata = payload;
+    this.contentId = payload.contentId || payload.contentTitle;
+    this.contentUrl = payload.contentUrl;
+    this.streamType = payload.live ? 'l' : 'v';
+    if (payload.contentUrl) {
+      if (payload.contentUrl.includes('.m3u8')) {
+        this.streamingFormat = 'h'; // HLS
+      } else if (payload.contentUrl.includes('.mpd')) {
+        this.streamingFormat = 'd'; // DASH
+      }
+    }
+    // cc = content change
+    this.sendCMCDEvent('cc');
+  }
+
+  reportError(error) {
+    // er = error event
+    this.sendCMCDEvent('er');
+  }
+
+  reportWarning(warning) {
+    // CMCDv2 doesn't have a warning concept - only errors (er)
+  }
+
+  reportStop() {
+    // No specific "stop" event in CMCDv2
+  }
+
+  deinit() {
+    this.videoElement = null;
+  }
+
+  destroy() {
+    this.deinit();
+  }
+}
 
 // Generate unique session ID
 function generateSessionId() {
@@ -124,17 +351,28 @@ function destroyCurrentPlayer() {
     analyticsConnector = null;
   }
 
+  if (cmcdReporter) {
+    try {
+      cmcdReporter.deinit();
+    } catch (e) {
+      console.warn('Error deinitializing CMCD reporter:', e);
+    }
+    cmcdReporter = null;
+  }
+
   // Reset video container
   videoContainer.innerHTML = '<video id="video-player" controls playsinline></video>';
   videoElement = document.getElementById('video-player');
 
   currentPlayer = null;
+  currentProtocol = null;
   currentPlayerDisplay.textContent = '-';
+  currentProtocolDisplay.textContent = '-';
   sessionIdDisplay.textContent = '-';
   updateStatus('Idle', 'status-idle');
 }
 
-// Create analytics connector with event interception
+// Create analytics connector with event interception (EPAS)
 function createAnalyticsConnector(eventsinkUrl) {
   // Create a custom fetch wrapper to intercept events
   const originalFetch = window.fetch;
@@ -155,6 +393,48 @@ function createAnalyticsConnector(eventsinkUrl) {
   };
 
   return new PlayerAnalyticsConnector(eventsinkUrl);
+}
+
+// Create CMCDv2 reporter with event interception
+function createCMCDReporter(eventsinkUrl) {
+  // CMCD event type mapping for display
+  const cmcdEventNames = {
+    'ps': 'playback_start',
+    'st': 'stall',
+    'er': 'error',
+    'se': 'seek',
+    'cc': 'content_change'
+  };
+
+  // Create a custom fetch wrapper to intercept CMCD events
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options) {
+    if (url.toString().includes('/cmcd') && options?.body) {
+      try {
+        const payload = JSON.parse(options.body);
+        // Handle CMCDv2 batch format
+        if (payload.events && payload.events.length > 0) {
+          payload.events.forEach(evt => {
+            const eventType = evt.event?.e;
+            const displayName = eventType ? cmcdEventNames[eventType] || eventType : 'status';
+            logEvent(displayName, {
+              sid: payload.session?.sid || evt.session?.sid,
+              br: evt.object?.br,
+              bl: evt.request?.bl,
+              sf: evt.session?.sf,
+              bs: evt.status?.bs,
+              ts: evt.event?.ts
+            });
+          });
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    return originalFetch.apply(this, arguments);
+  };
+
+  return new CMCDv2Reporter(eventsinkUrl);
 }
 
 // Setup video element event listeners for additional logging
@@ -202,8 +482,9 @@ async function initHlsPlayer(videoUrl) {
   // Track bitrate changes
   hlsInstance.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
     const level = hlsInstance.levels[data.level];
-    if (level && analyticsConnector) {
-      analyticsConnector.reportBitrateChange({
+    const reporter = getActiveReporter();
+    if (level && reporter) {
+      reporter.reportBitrateChange({
         bitrate: Math.round(level.bitrate / 1000),
         width: level.width,
         height: level.height
@@ -213,14 +494,15 @@ async function initHlsPlayer(videoUrl) {
 
   // Track errors
   hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+    const reporter = getActiveReporter();
     if (data.fatal) {
-      analyticsConnector?.reportError({
+      reporter?.reportError({
         category: data.type,
         code: data.details,
         message: data.reason || 'HLS.js fatal error'
       });
     } else {
-      analyticsConnector?.reportWarning({
+      reporter?.reportWarning({
         category: data.type,
         code: data.details,
         message: data.reason || 'HLS.js warning'
@@ -255,8 +537,9 @@ async function initShakaPlayer(videoUrl) {
   shakaInstance.addEventListener('adaptation', () => {
     const tracks = shakaInstance.getVariantTracks();
     const activeTrack = tracks.find(t => t.active);
-    if (activeTrack && analyticsConnector) {
-      analyticsConnector.reportBitrateChange({
+    const reporter = getActiveReporter();
+    if (activeTrack && reporter) {
+      reporter.reportBitrateChange({
         bitrate: Math.round((activeTrack.bandwidth || 0) / 1000),
         width: activeTrack.width,
         height: activeTrack.height,
@@ -269,7 +552,8 @@ async function initShakaPlayer(videoUrl) {
   // Track errors
   shakaInstance.addEventListener('error', (event) => {
     const error = event.detail;
-    analyticsConnector?.reportError({
+    const reporter = getActiveReporter();
+    reporter?.reportError({
       category: `shaka-${error.category}`,
       code: error.code.toString(),
       message: error.message || 'Shaka Player error'
@@ -298,9 +582,15 @@ async function initEyevinnPlayer(videoUrl) {
   }
 }
 
+// Get the active analytics reporter (EPAS or CMCD)
+function getActiveReporter() {
+  return analyticsConnector || cmcdReporter;
+}
+
 // Load video with selected player
 async function loadVideo() {
   const selectedPlayer = playerSelect.value;
+  const selectedProtocol = analyticsProtocolSelect.value;
   const eventsinkUrl = eventsinkUrlInput.value.trim();
   const videoUrl = videoUrlInput.value.trim();
   const contentTitle = contentTitleInput.value.trim();
@@ -313,30 +603,43 @@ async function loadVideo() {
   // Destroy any existing player
   destroyCurrentPlayer();
 
-  // Generate new session ID
-  sessionId = generateSessionId();
+  // Generate new session ID (prefix with protocol for easy filtering)
+  const baseSessionId = generateSessionId();
+  sessionId = selectedProtocol === 'cmcd' ? `cmcd-${baseSessionId}` : baseSessionId;
   sessionIdDisplay.textContent = sessionId;
   const playerNames = {
     eyevinn: 'Eyevinn Web Player',
     hlsjs: 'HLS.js',
     shaka: 'Shaka Player'
   };
+  const protocolNames = {
+    epas: 'EPAS',
+    cmcd: 'CMCDv2'
+  };
   currentPlayerDisplay.textContent = playerNames[selectedPlayer] || selectedPlayer;
+  currentProtocol = selectedProtocol;
+  currentProtocolDisplay.textContent = protocolNames[selectedProtocol] || selectedProtocol;
   updateStatus('Loading', 'status-loading');
 
   loadBtn.disabled = true;
   stopBtn.disabled = true;
 
   try {
-    // Create analytics connector
-    analyticsConnector = createAnalyticsConnector(eventsinkUrl);
-
-    // Initialize analytics session
-    await analyticsConnector.init({
-      sessionId: sessionId,
-      shardId: SHARD_ID,
-      heartbeatInterval: HEARTBEAT_INTERVAL
-    });
+    // Create analytics connector based on selected protocol
+    if (selectedProtocol === 'cmcd') {
+      cmcdReporter = createCMCDReporter(eventsinkUrl);
+      await cmcdReporter.init({
+        sessionId: sessionId
+      });
+    } else {
+      // EPAS (default)
+      analyticsConnector = createAnalyticsConnector(eventsinkUrl);
+      await analyticsConnector.init({
+        sessionId: sessionId,
+        shardId: SHARD_ID,
+        heartbeatInterval: HEARTBEAT_INTERVAL
+      });
+    }
 
     // Initialize the selected player
     if (selectedPlayer === 'eyevinn') {
@@ -351,10 +654,11 @@ async function loadVideo() {
     }
 
     // Attach analytics to video element
-    analyticsConnector.load(videoElement);
+    const reporter = getActiveReporter();
+    reporter.load(videoElement);
 
     // Send metadata
-    analyticsConnector.reportMetadata({
+    reporter.reportMetadata({
       contentTitle: contentTitle || 'Demo Video',
       contentUrl: videoUrl,
       live: false,
@@ -378,8 +682,9 @@ async function loadVideo() {
 
 // Stop current session
 function stopSession() {
-  if (analyticsConnector) {
-    analyticsConnector.reportStop();
+  const reporter = getActiveReporter();
+  if (reporter) {
+    reporter.reportStop();
   }
   destroyCurrentPlayer();
   updateStatus('Stopped', 'status-idle');
@@ -397,8 +702,9 @@ clearEventsBtn.addEventListener('click', clearEvents);
 
 // Handle page unload
 window.addEventListener('beforeunload', () => {
-  if (analyticsConnector) {
-    analyticsConnector.reportStop();
+  const reporter = getActiveReporter();
+  if (reporter) {
+    reporter.reportStop();
   }
 });
 
@@ -409,10 +715,24 @@ shaka.polyfill.installAll();
 eventsinkUrlInput.value = DEFAULT_EVENTSINK_URL;
 
 // ClickHouse Database Functions
-const TABLE_NAME = `epas_${SHARD_ID}`;
+const EPAS_TABLE_NAME = `epas_${SHARD_ID}`;
+const CMCD_TABLE_NAME = 'epas_default';
+
+// Get current table name based on selected protocol
+function getTableName() {
+  return analyticsProtocolSelect.value === 'cmcd' ? CMCD_TABLE_NAME : EPAS_TABLE_NAME;
+}
 
 // Update table name display
-dbTableName.textContent = TABLE_NAME;
+function updateTableNameDisplay() {
+  dbTableName.textContent = getTableName();
+}
+
+// Initialize table name display
+updateTableNameDisplay();
+
+// Update table name when protocol changes
+analyticsProtocolSelect.addEventListener('change', updateTableNameDisplay);
 
 // Query ClickHouse database
 async function queryClickHouse(query) {
@@ -483,8 +803,11 @@ async function refreshDatabase() {
   refreshDbBtn.disabled = true;
   refreshDbBtn.textContent = 'Loading...';
 
+  const tableName = getTableName();
+  updateTableNameDisplay();
+
   try {
-    const query = `SELECT * FROM ${TABLE_NAME} ORDER BY timestamp DESC LIMIT 100`;
+    const query = `SELECT * FROM ${tableName} ORDER BY timestamp DESC LIMIT 100`;
     const result = await queryClickHouse(query);
     renderTableRows(result.data || []);
   } catch (error) {
@@ -508,7 +831,8 @@ console.log('Eyevinn Open Analytics Demo initialized');
 console.log('Shard ID:', SHARD_ID);
 console.log('Eventsink URL:', DEFAULT_EVENTSINK_URL);
 console.log('ClickHouse URL:', CLICKHOUSE_URL);
-console.log('Table Name:', TABLE_NAME);
+console.log('EPAS Table:', EPAS_TABLE_NAME);
+console.log('CMCD Table:', CMCD_TABLE_NAME);
 
 // Export configuration for external use
 export const config = {

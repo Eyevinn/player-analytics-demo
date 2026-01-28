@@ -26,6 +26,14 @@
           </div>
 
           <div class="control-group">
+            <label for="analytics-protocol">Analytics Protocol</label>
+            <select id="analytics-protocol">
+              <option value="epas">EPAS (Player SDK)</option>
+              <option value="cmcd">CMCDv2</option>
+            </select>
+          </div>
+
+          <div class="control-group">
             <label for="eventsink-url">Eventsink URL</label>
             <input
               type="text"
@@ -74,6 +82,10 @@
           <div class="info-item">
             <span class="label">Player:</span>
             <span id="current-player" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Protocol:</span>
+            <span id="current-protocol" class="value">-</span>
           </div>
           <div class="info-item">
             <span class="label">Status:</span>
